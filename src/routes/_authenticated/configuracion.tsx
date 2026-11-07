@@ -53,7 +53,17 @@ import {
   updateCalendarSyncSettings,
   syncCalendarNow,
 } from "@/lib/api/calendar.functions";
-import { Calendar, Plus, Trash2, RefreshCw, X, UserCog, Plug } from "lucide-react";
+import {
+  Calendar,
+  Plus,
+  Trash2,
+  RefreshCw,
+  X,
+  UserCog,
+  Plug,
+  Briefcase,
+  ExternalLink,
+} from "lucide-react";
 import { Download, Lock as LockIcon } from "lucide-react";
 import {
   getRetentionStatus,
@@ -71,18 +81,19 @@ import {
   refreshWhatsappStatus,
 } from "@/lib/api/whatsapp.functions";
 
-export type ConfigTab = "perfil" | "agenda" | "descargas" | "integraciones";
+export type ConfigTab = "perfil" | "practica" | "agenda" | "integraciones" | "descargas";
 
 export const CONFIG_TABS: Array<{ id: ConfigTab; label: string }> = [
-  { id: "perfil", label: "Datos del profesional" },
-  { id: "descargas", label: "Descargas" },
+  { id: "perfil", label: "Perfil profesional" },
+  { id: "practica", label: "Mi Práctica" },
   { id: "integraciones", label: "Integraciones" },
+  { id: "descargas", label: "Descargas" },
 ];
 
 export const Route = createFileRoute("/_authenticated/configuracion")({
   validateSearch: (search: Record<string, unknown>): { tab: ConfigTab } => {
     const t = String(search.tab ?? "perfil");
-    const valid = CONFIG_TABS.some((x) => x.id === t);
+    const valid = CONFIG_TABS.some((x) => x.id === t) || t === "agenda";
     return { tab: (valid ? t : "perfil") as ConfigTab };
   },
   head: () => ({
@@ -110,27 +121,26 @@ export const Route = createFileRoute("/_authenticated/configuracion")({
   component: ConfigPage,
 });
 
-const PROFILE_SECTIONS = [
-  { id: "datos", label: "Datos del profesional" },
-  { id: "dias", label: "Días" },
+const PRACTICE_SECTIONS = [
+  { id: "dias", label: "Días laborables" },
+  { id: "lugares", label: "Sedes de atención" },
   { id: "horarios", label: "Horarios" },
   { id: "jornadas", label: "Jornadas" },
-  { id: "lugares", label: "Lugares" },
-  { id: "tipos", label: "Tipos de turno" },
-  { id: "link", label: "Link de turnos" },
+  { id: "tipos", label: "Tipos de turno y aranceles" },
+  { id: "link", label: "Link" },
 ] as const;
-type ProfileSection = (typeof PROFILE_SECTIONS)[number]["id"];
+type PracticeSection = (typeof PRACTICE_SECTIONS)[number]["id"];
 
 function ConfigPage() {
   const { has, isAdmin } = useEntitlements();
   const { tab } = Route.useSearch();
-  const [section, setSection] = useState<ProfileSection>("datos");
+  const [practiceSection, setPracticeSection] = useState<PracticeSection>("dias");
   return (
     <div className="zip-ui warm-ui space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
         <p className="text-sm text-muted-foreground">
-          Datos del profesional, horarios y ausencias.
+          Gestioná los horarios, sedes, aranceles, integraciones y datos de tu consultorio.
         </p>
       </div>
 
@@ -140,8 +150,15 @@ function ConfigPage() {
         aria-label="Pestañas de configuración"
       >
         {CONFIG_TABS.map((t) => {
-          const active = tab === t.id;
-          const TabIcon = t.id === "perfil" ? UserCog : t.id === "descargas" ? Download : Plug;
+          const active = tab === t.id || (tab === "agenda" && t.id === "practica");
+          const TabIcon =
+            t.id === "practica"
+              ? Briefcase
+              : t.id === "perfil"
+                ? UserCog
+                : t.id === "descargas"
+                  ? Download
+                  : Plug;
           return (
             <Link
               key={t.id}
@@ -162,30 +179,39 @@ function ConfigPage() {
         })}
       </div>
 
-      {tab === "perfil" && (
+      {(tab === "practica" || tab === "agenda") && (
         <div className="space-y-6">
-          <div className="mk-status-seg" role="tablist" aria-label="Secciones del perfil">
-            {PROFILE_SECTIONS.map((s) => (
+          <div className="mk-status-seg" role="tablist" aria-label="Secciones de Mi Práctica">
+            {PRACTICE_SECTIONS.map((s) => (
               <button
                 key={s.id}
                 type="button"
                 role="tab"
-                aria-selected={section === s.id}
-                className={section === s.id ? "is-active" : undefined}
-                onClick={() => setSection(s.id)}
+                aria-selected={practiceSection === s.id}
+                className={practiceSection === s.id ? "is-active" : undefined}
+                onClick={() => setPracticeSection(s.id)}
               >
                 {s.label}
               </button>
             ))}
           </div>
-          {section === "datos" && <ProfileCard />}
-          {section === "dias" && <NonWorkingDaysCard />}
-          {section === "horarios" && <ScheduleCard />}
-          {section === "jornadas" && <DateBlocksCard />}
-          {section === "lugares" && <LocationsEditor />}
-          {section === "tipos" && <AppointmentTypesEditor />}
-          {section === "link" && <ShareLinkCard />}
-          {section === "link" && has("patient_self_booking") && <BookingAccessCard />}
+          {practiceSection === "dias" && <WorkingDaysCard />}
+          {practiceSection === "lugares" && <LocationsEditor />}
+          {practiceSection === "horarios" && <ScheduleCard />}
+          {practiceSection === "jornadas" && <DateBlocksCard />}
+          {practiceSection === "tipos" && <AppointmentTypesEditor />}
+          {practiceSection === "link" && (
+            <div className="space-y-6">
+              <ShareLinkCard />
+              {has("patient_self_booking") && <BookingAccessCard />}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "perfil" && (
+        <div className="space-y-6">
+          <ProfileCard />
         </div>
       )}
       {tab === "descargas" && (
@@ -778,7 +804,15 @@ function ShareLinkCard() {
                   disabled={!url}
                   onClick={() => window.open(url, "_blank")}
                 >
-                  Abrir
+                  <ExternalLink className="mr-1 h-3.5 w-3.5" /> Abrir enlace
+                </SectionButton>
+                <SectionButton variant="ghost" size="sm" asChild>
+                  <Link
+                    to="/simulador"
+                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <PlayCircle className="h-3.5 w-3.5 text-primary" /> Probar en Simulador
+                  </Link>
                 </SectionButton>
               </div>
             </>
@@ -1435,22 +1469,31 @@ function BookingAccessCard() {
   );
 }
 
-function NonWorkingDaysCard() {
+function WorkingDaysCard() {
   const fetchCfg = useServerFn(getMyConfig);
   const updateCfg = useServerFn(updateMyConfig);
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["config"], queryFn: () => fetchCfg() });
-  const [days, setDays] = useState<number[]>([]);
+  // workingDays guarda los índices [0..6] en los que el profesional atiende.
+  // En la base de datos se almacena non_working_days (los días en los que NO atiende).
+  const [workingDays, setWorkingDays] = useState<number[]>([1, 2, 3, 4, 5]);
   useEffect(() => {
-    if (data) setDays(data.non_working_days ?? []);
+    if (data) {
+      const nonWorking = data.non_working_days ?? [];
+      const working = [0, 1, 2, 3, 4, 5, 6].filter((d) => !nonWorking.includes(d));
+      setWorkingDays(working);
+    }
   }, [data]);
 
-  const toggle = (d: number) =>
-    setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()));
+  const toggleWorkingDay = (d: number) =>
+    setWorkingDays((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b),
+    );
 
   const m = useMutation({
-    mutationFn: () =>
-      updateCfg({
+    mutationFn: () => {
+      const nonWorking = [0, 1, 2, 3, 4, 5, 6].filter((d) => !workingDays.includes(d));
+      return updateCfg({
         data: {
           display_name: data?.display_name ?? "",
           specialty: data?.specialty ?? "",
@@ -1459,43 +1502,63 @@ function NonWorkingDaysCard() {
           maps_url: data?.maps_url ?? "",
           appointment_duration_minutes: data?.appointment_duration_minutes ?? 30,
           reminder_hour: data?.reminder_hour ?? 17,
-          non_working_days: days,
+          non_working_days: nonWorking,
           max_active_appointments_per_patient: data?.max_active_appointments_per_patient ?? 1,
         },
-      }),
+      });
+    },
     onSuccess: () => {
-      toast.success("Días no laborables guardados");
+      toast.success("Días laborables guardados");
       qc.invalidateQueries({ queryKey: ["config"] });
       qc.invalidateQueries({ queryKey: ["appointments"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Días de lunes a domingo
+  const displayDays = [
+    { label: "Lunes", index: 1 },
+    { label: "Martes", index: 2 },
+    { label: "Miércoles", index: 3 },
+    { label: "Jueves", index: 4 },
+    { label: "Viernes", index: 5 },
+    { label: "Sábado", index: 6 },
+    { label: "Domingo", index: 0 },
+  ];
+
   return (
     <SectionColorProvider color="day-2">
       <Card className="border-l-[6px] border-l-day-2">
         <CardHeader>
-          <CardTitle className="text-day-2">Días no laborables</CardTitle>
+          <CardTitle className="text-day-2">Días laborables</CardTitle>
           <CardDescription>
-            Marcá los días de la semana en los que no atendés. Estos días no se muestran en la
-            agenda ni se ofrecen al paciente.
+            Elegí los días de la semana en los que atendés pacientes. Los días desmarcados se
+            considerarán no laborables y no se mostrarán en la agenda ni se ofrecerán en el portal
+            de reservas.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-3">
-            {DAYS_ES.map((label, i) => (
+            {displayDays.map(({ label, index }) => (
               <label
-                key={i}
-                className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm cursor-pointer"
+                key={index}
+                className={`flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm cursor-pointer transition-colors ${
+                  workingDays.includes(index)
+                    ? "border-primary/40 bg-primary/5 font-medium text-foreground"
+                    : "border-border bg-muted/40 text-muted-foreground"
+                }`}
               >
-                <SectionCheckbox checked={days.includes(i)} onCheckedChange={() => toggle(i)} />
+                <SectionCheckbox
+                  checked={workingDays.includes(index)}
+                  onCheckedChange={() => toggleWorkingDay(index)}
+                />
                 {label}
               </label>
             ))}
           </div>
           <div className="flex justify-end">
             <SectionButton onClick={() => m.mutate()} disabled={m.isPending}>
-              {m.isPending ? "Guardando…" : "Guardar días"}
+              {m.isPending ? "Guardando…" : "Guardar días laborables"}
             </SectionButton>
           </div>
         </CardContent>

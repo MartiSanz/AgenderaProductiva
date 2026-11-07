@@ -147,18 +147,56 @@ function AuthedLayout() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      <header className="app-header hidden md:block">
         <div className="section-shell">
           <div className="app-header__row">
-            <Link to="/agenda" className="brand" aria-label="Ir a la agenda">
-              <img src={agenderaMark} alt="" className="brand__logo" />
-              <span className="app-header__brand-text">
-                <strong>Agendera</strong>
-                <small>Gestión de turnos</small>
-              </span>
-            </Link>
+            <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+              <Link to="/agenda" className="brand shrink-0" aria-label="Ir a la agenda">
+                <img src={agenderaMark} alt="" className="brand__logo" />
+                <span className="app-header__brand-text">
+                  <strong>Agendera</strong>
+                  <small>Gestión de turnos</small>
+                </span>
+              </Link>
+              <nav
+                className="hidden md:flex items-center gap-1"
+                aria-label="Navegación de escritorio"
+              >
+                {nav.map((n) => {
+                  const active = location.pathname.startsWith(n.to);
+                  return (
+                    <Link
+                      key={n.to}
+                      to={n.to}
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                      }`}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <n.icon className="h-3.5 w-3.5" />
+                      <span>{n.label}</span>
+                    </Link>
+                  );
+                })}
+                <Link
+                  to="/configuracion"
+                  search={{ tab: "perfil" as const }}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                    inConfig
+                      ? "bg-primary text-primary-foreground shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                  }`}
+                  aria-current={inConfig ? "page" : undefined}
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  <span>Configuración</span>
+                </Link>
+              </nav>
+            </div>
             <div className="flex items-center gap-3">
-              <span className="app-header__date">{today}</span>
+              <span className="app-header__date hidden lg:inline">{today}</span>
               {isAdmin && (
                 <Link
                   to={location.pathname.startsWith("/admin") ? "/agenda" : "/admin"}
@@ -229,7 +267,7 @@ function AuthedLayout() {
           </div>
         </div>
       </header>
-      <nav className="app-nav app-bottom-nav" aria-label="Navegación principal">
+      <nav className="app-nav app-bottom-nav md:hidden" aria-label="Navegación principal">
         {nav.map((n) => {
           const active = location.pathname.startsWith(n.to);
           return (

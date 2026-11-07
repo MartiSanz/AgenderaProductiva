@@ -73,6 +73,7 @@ import {
   ChevronsUpDown,
   ListOrdered,
   MapPin,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   syncCalendarNow,
@@ -522,6 +523,22 @@ function AgendaPage() {
   });
   // Sede elegida para el turno: con más de una, solo se ofrecen sus días y horarios.
   const [npLocation, setNpLocation] = useState("");
+  // Filtros condensados de agenda
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterLocation, setFilterLocation] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  const activeFiltersCount =
+    (filterType !== "all" ? 1 : 0) +
+    (filterLocation !== "all" ? 1 : 0) +
+    (filterStatus !== "all" ? 1 : 0);
+
+  const clearFilters = () => {
+    setFilterType("all");
+    setFilterLocation("all");
+    setFilterStatus("all");
+  };
+
   const npSedes = useMemo(
     () =>
       bookableLocations(
@@ -900,11 +917,62 @@ function AgendaPage() {
   const isCurrentMonth =
     today.getFullYear() === monthStart.getFullYear() && today.getMonth() === monthStart.getMonth();
 
+  // Datos filtrados según sede, tipo de turno y estado
+  const filteredData = useMemo(() => {
+    if (activeFiltersCount === 0) return data;
+    return data.filter((a: any) => {
+      if (
+        filterType !== "all" &&
+        a.appointment_type_id !== filterType &&
+        a.appointment_type_name !== filterType
+      ) {
+        return false;
+      }
+      if (filterLocation !== "all") {
+        const place = placeForSlot({
+          startIso: a.start_at,
+          durationMinutes: 30,
+          schedule: (scheduleRows as any[]).map((r) => ({
+            ...r,
+            start_time: String(r.start_time).slice(0, 5),
+            end_time: String(r.end_time).slice(0, 5),
+          })),
+          locations: locations as any[],
+          timezone: (cfg as any)?.timezone || undefined,
+          fallbackAddress: (cfg as any)?.address ?? "",
+        });
+        const targetLoc = (locations as any[]).find((l) => l.id === filterLocation);
+        if (place?.name !== targetLoc?.name && place?.name !== filterLocation) {
+          return false;
+        }
+      }
+      if (filterStatus === "confirmed" && !a.confirmed_at && !a.whatsapp_confirmed) {
+        return false;
+      }
+      if (filterStatus === "pending" && (a.confirmed_at || a.whatsapp_confirmed)) {
+        return false;
+      }
+      if (filterStatus === "attended" && !a.attended_at) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    data,
+    activeFiltersCount,
+    filterType,
+    filterLocation,
+    filterStatus,
+    scheduleRows,
+    locations,
+    cfg,
+  ]);
+
   // Week view: list of working days (unchanged behaviour)
   const days = useMemo(() => {
     const out: { date: Date; items: any[]; blocks: any[] }[] = [];
     for (const d of visibleRange.days) {
-      const items = data
+      const items = filteredData
         .filter((a: any) => sameDay(new Date(a.start_at), d))
         .sort((a: any, b: any) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
       const dayBlocks = blocks
@@ -913,7 +981,7 @@ function AgendaPage() {
       out.push({ date: d, items, blocks: dayBlocks });
     }
     return out;
-  }, [data, visibleRange, blocks]);
+  }, [filteredData, visibleRange, blocks]);
 
   // Month view: full calendar grid including all days
   const monthCells = useMemo(() => {
@@ -921,13 +989,13 @@ function AgendaPage() {
     const first = monthStart;
     for (const d of visibleRangeFor("month", monthStart).days) {
       const inMonth = d.getMonth() === first.getMonth();
-      const items = data
+      const items = filteredData
         .filter((a: any) => sameDay(new Date(a.start_at), d))
         .sort((a: any, b: any) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
       out.push({ date: d, inMonth, items });
     }
     return out;
-  }, [data, monthStart]);
+  }, [filteredData, monthStart]);
 
   const label =
     view !== "month"
@@ -941,12 +1009,12 @@ function AgendaPage() {
   const gridDays = useMemo(() => {
     const out: { date: Date; items: any[]; blocks: any[] }[] = [];
     for (const d of visibleRange.days) {
-      const items = data.filter((a: any) => sameDay(new Date(a.start_at), d));
+      const items = filteredData.filter((a: any) => sameDay(new Date(a.start_at), d));
       const dayBlocks = blocks.filter((b: any) => sameDay(new Date(b.start), d));
       out.push({ date: d, items, blocks: dayBlocks });
     }
     return out;
-  }, [data, visibleRange, blocks]);
+  }, [filteredData, visibleRange, blocks]);
 
   return (
     <div className="agenda-page mx-auto max-w-6xl space-y-6">
@@ -980,7 +1048,7 @@ function AgendaPage() {
               <Button variant="outline" size="icon" onClick={goPrev} aria-label="Período anterior">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={() => setAnchor(new Date())}>
+              <Button variant="outline" onClick={() => setAnchor(new Date())} title="Ir a hoy">
                 Hoy
               </Button>
               <Button variant="outline" size="icon" onClick={goNext} aria-label="Período siguiente">
@@ -999,6 +1067,94 @@ function AgendaPage() {
             <Button variant="outline" size="sm" onClick={() => setTimeOffOpen(true)}>
               <CalendarX2 className="mr-2 h-4 w-4" /> Ausencias
             </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={activeFiltersCount > 0 ? "secondary" : "outline"}
+                  size="sm"
+                  className="gap-1.5"
+                  aria-label="Filtros de agenda"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span>Filtros</span>
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="default" className="h-5 px-1.5 text-[11px] font-bold">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4 space-y-4" align="start">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <span className="font-semibold text-sm">Filtros de agenda</span>
+                  {activeFiltersCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="text-xs text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+                    >
+                      Limpiar todo
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro por Sede */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Sede / Consultorio
+                  </label>
+                  <Select value={filterLocation} onValueChange={setFilterLocation}>
+                    <SelectTrigger className="w-full text-xs h-8">
+                      <SelectValue placeholder="Todas las sedes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las sedes</SelectItem>
+                      {(locations as any[]).map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>
+                          {loc.name} {loc.city ? `(${loc.city})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Tipo de turno */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Tipo de turno</label>
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger className="w-full text-xs h-8">
+                      <SelectValue placeholder="Todos los tipos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los tipos</SelectItem>
+                      {(apptTypes as any[]).map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro por Estado */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Estado del turno
+                  </label>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-full text-xs h-8">
+                      <SelectValue placeholder="Todos los estados" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="confirmed">Confirmados por WhatsApp</SelectItem>
+                      <SelectItem value="pending">Pendientes de confirmación</SelectItem>
+                      <SelectItem value="attended">Atendidos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               className="lg:hidden"
               variant={showUpcoming ? "default" : "outline"}
@@ -1025,7 +1181,11 @@ function AgendaPage() {
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         {showUpcoming && (
           <div className="min-w-0 lg:hidden">
-            <UpcomingPanel appointments={data} onSelect={setDetail} confirmed={apptConfirmed} />
+            <UpcomingPanel
+              appointments={filteredData}
+              onSelect={setDetail}
+              confirmed={apptConfirmed}
+            />
           </div>
         )}
         <div className={`min-w-0 ${showUpcoming ? "hidden lg:block" : ""}`}>
