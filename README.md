@@ -1,7 +1,5 @@
 # Agendera
 
-quiero preguntarte si puedo enviarte un documento de mas de 600 paginas para que lo leas, lo interpretes, analices y entiendas que se debe hacer. es el documento que te aclara cada necesidad de lo que se debe desarrollar
-
 This project was built with [Lovable](https://lovable.dev).
 
 **Live app**: https://agendera.lovable.app
