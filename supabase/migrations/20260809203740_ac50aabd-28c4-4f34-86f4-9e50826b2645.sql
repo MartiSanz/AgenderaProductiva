@@ -1,0 +1,1 @@
+ALTER TABLE public.account_plans ALTER COLUMN notes DROP NOT NULL;

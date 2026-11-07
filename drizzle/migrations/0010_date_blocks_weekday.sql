@@ -1,0 +1,2 @@
+ALTER TABLE public.schedule_date_blocks ADD COLUMN day_of_week smallint CHECK (day_of_week IS NULL OR (day_of_week BETWEEN 0 AND 6));
+COMMENT ON COLUMN public.schedule_date_blocks.day_of_week IS 'Weekday this band applies to within the date range; NULL = every day of the range';

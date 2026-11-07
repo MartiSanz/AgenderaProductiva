@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec pnpm dlx bun@1.4.4 install --frozen-lockfile

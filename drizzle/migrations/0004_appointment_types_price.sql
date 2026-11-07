@@ -1,0 +1,1 @@
+ALTER TABLE public.appointment_types ADD COLUMN price_ars numeric(12,2);

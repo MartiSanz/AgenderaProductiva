@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /agenda
+Disallow: /pacientes
+Disallow: /configuracion
+Disallow: /resumen
+Disallow: /admin
+Disallow: /simulador
+Disallow: /c/
+
+Sitemap: https://agendera.lovable.app/sitemap.xml

@@ -1,0 +1,1 @@
+ALTER TABLE public.patients DROP CONSTRAINT IF EXISTS patients_owner_id_dni_phone_key;

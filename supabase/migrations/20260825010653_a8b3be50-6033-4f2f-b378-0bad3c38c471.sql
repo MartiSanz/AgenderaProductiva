@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS patients_owner_dni_unique ON public.patients (owner_id, dni) WHERE dni <> '';

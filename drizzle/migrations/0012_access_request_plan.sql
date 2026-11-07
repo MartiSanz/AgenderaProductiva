@@ -1,0 +1,1 @@
+ALTER TABLE public.access_requests ADD COLUMN requested_plan text NOT NULL DEFAULT 'basic' CHECK (requested_plan IN ('basic','pro'));

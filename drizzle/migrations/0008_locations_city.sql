@@ -1,0 +1,1 @@
+ALTER TABLE public.locations ADD COLUMN city text NOT NULL DEFAULT '';

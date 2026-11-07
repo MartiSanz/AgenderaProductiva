@@ -1,0 +1,1 @@
+ALTER TABLE public.time_off ADD COLUMN start_time time, ADD COLUMN end_time time;

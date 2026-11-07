@@ -1,0 +1,2 @@
+ALTER TABLE public.account_plans ADD COLUMN is_test boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.account_plans.is_test IS 'Cuenta de prueba: excluida de los cálculos del módulo de finanzas.';

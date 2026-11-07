@@ -1,0 +1,10 @@
+{
+  "description": "A newly imported web app prepared for reliable deployment and preview, helping teams verify setup and readiness before sharing or publishing.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
